@@ -1,5 +1,8 @@
 #!/usr/bin/env ruby
 
+require 'net/smtp'
+require 'optparse'
+
 ### REMEMBER TO EDIT PASSWORD ###
 
 ### yet to do ###
@@ -11,13 +14,54 @@
 # allow for subject, to, from, adjustment/input
 # error handling
 
+
 # what about being able to incorporate an automatic, timed
 # command run like
 # "every hour, email me the results of 'find *.rb ~/oak/dev/my_lib | less'"
 # that would be kinda cool and useful
 
+# control
+options = {}
+option_parser = OptionParser.new do |opts|
+  executable_name = File.basename($PROGRAM_NAME)
+  opts.banner = "Send the results of commands, notes, memos, etc., over email.\n
+  Usage: #{executable_name} [options] text
+  
+  "
 
-require 'net/smtp'
+  # point to a text file to use as the message
+  opts.on("-f FILE","--file",
+         'Send the contents of a file instead of STDIN') do |file|
+    options[:file] = file
+  end
+  
+  # login username
+  opts.on("-u USER", "--username",
+         'Account username (everything before the @)') do |user|
+    options[:user] = user
+  end
+  
+  # login password
+  opts.on("-p PASSWORD", "--password",
+         'Account password') do |password|
+    options[:password] = password
+  end
+
+  # message subject
+  opts.on("-s SUBJECT", "--subject",
+         'Message subject') do |subject|
+    options[:subject] = subject
+  end
+end
+
+option_parser.parse!
+
+if options[:file]
+  message_body = File.open(options[:file], 'r') { |l| l.read }
+else
+  message_body = ARGV.shift
+end
+
 
 # perhaps a bit clever...yields A-Z 0-9 char.
 msg_gen = lambda { rand(2) > 0 ? ("A".."Z").to_a[rand(26)] : rand(10).to_s }
@@ -30,14 +74,12 @@ my_message_id = (1..30).collect_concat { msg_gen.call }.join
 
 now = Time.now
 
-# the goal here is to use the piped output
-# from another program as the input text.
-message_body = ARGV.shift
+
 
 msgstr = <<END_OF_MESSAGE
 From: Clark Kampfe <clark.kampfe@gmail.com>
 To: Clark Kampfe <clark.kampfe@gmail.com>
-Subject: time test 
+Subject: #{options[:subject]}
 Date: #{now} 
 Message-Id: <#{my_message_id}@mail.gmail.com>
 
@@ -45,12 +87,12 @@ Message-Id: <#{my_message_id}@mail.gmail.com>
 END_OF_MESSAGE
 
 # docs: http://rubydoc.org/stdlib/net/1.9.3/Net/SMTP#enable_tls-instance_method
-def send_mail(m)
+def send_mail(m, options)
   con = Net::SMTP.new('smtp.googlemail.com', 465)
   con.enable_tls
-  con.start('gmail.com', 'clark.kampfe', 'INSERT_PASSWORD_HERE', :login) do |smtp|
+  con.start('gmail.com', options[:user], options[:password], :login) do |smtp|
     smtp.send_message m, 'clark.kampfe@gmail.com', 'clark.kampfe@gmail.com'
   end
 end
 
-send_mail(msgstr)
+send_mail(msgstr, options)
