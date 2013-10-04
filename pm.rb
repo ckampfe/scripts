@@ -6,12 +6,12 @@ require 'optparse'
 ### REMEMBER TO EDIT PASSWORD ###
 
 ### yet to do ###
-# command flags,
+### command flags,
 # fixing of timestamp,
 # custom interval,
-# set env in the header (see the CLI book for this)
-# get rid of hardcoded password
-# allow for subject, to, from, adjustment/input
+### set env in the header (see the CLI book for this)
+### get rid of hardcoded password
+### allow for subject, to, from, adjustment/input
 # error handling
 
 
@@ -52,14 +52,27 @@ option_parser = OptionParser.new do |opts|
          'Message subject') do |subject|
     options[:subject] = subject
   end
+
+  # cmd
+  opts.on("-c COMMAND", "--command",
+          'Command') do |cmd|
+    options[:cmd] = cmd
+  end
 end
 
-option_parser.parse!
 
+option_parser.parse!
+if options[:file] && options[:cmd]
+  raise ArgumentError, "please enter either a command or a file, but not both"
+end
+    
 if options[:file]
   message_body = File.open(options[:file], 'r') { |l| l.read }
+elsif options[:cmd]
+  p options[:cmd]
+  message_body = `#{options[:cmd]}`
 else
-  message_body = ARGV[0]
+  message_body = ARGV.join(' ')
 end
 
 
